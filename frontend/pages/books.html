@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books | Smart Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <header class="navbar"></header>
+
+    <main class="app-shell">
+        <section class="card grid" style="gap:16px;">
+            <div class="row">
+                <h1 class="title">Books</h1>
+                <div class="actions">
+                    <button class="btn btn-secondary" id="refreshButton" type="button">Refresh</button>
+                </div>
+            </div>
+
+            <form id="searchForm" class="row" style="align-items:stretch;">
+                <div class="search-input-wrap">
+                    <input class="input" id="searchInput" type="text" placeholder="Search Book ID, title, author" autocomplete="off" required>
+                    <div id="searchSuggestions" class="search-suggestions" style="display:none;"></div>
+                </div>
+                <button class="btn btn-primary" type="submit">Search</button>
+            </form>
+
+            <p class="small" id="booksStatus">Loading...</p>
+            <p class="form-message" id="booksActionMessage"></p>
+
+            <section>
+                <h2 class="section-title">Results</h2>
+                <div id="booksContainer"></div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Recommendations</h2>
+                <div id="recommendContainer"></div>
+            </section>
+
+            <section>
+                <h2 class="section-title">My Issued Books</h2>
+                <div id="issuedList"></div>
+            </section>
+
+            <section id="adminSection" style="display:none;">
+                <h2 class="section-title">Admin Book Controls</h2>
+                <form id="addBookForm" class="grid grid-2">
+                    <input class="input" name="title" placeholder="Title" required>
+                    <input class="input" name="author_name" placeholder="Author" required>
+                    <input class="input" name="category" placeholder="Category" value="General">
+                    <input class="input" name="published_date" placeholder="Published Date">
+                    <input class="input" name="total_copies" type="number" min="1" value="5">
+                    <input class="input" name="isbn" placeholder="ISBN">
+                    <input class="input" name="cover_url" placeholder="Cover URL">
+                    <input class="input" name="description" placeholder="Description">
+                    <button class="btn btn-primary" type="submit">Add Book</button>
+                </form>
+            </section>
+        </section>
+    </main>
+
+    <section class="modal" id="issueModal">
+        <article class="card" style="width:min(480px, 100%);">
+            <h3 class="title" style="font-size:1.1rem;">Issue Book</h3>
+            <p class="small" id="issueBookTitle">Book</p>
+            <form id="issueForm" class="grid">
+                <input id="issueBookId" type="hidden">
+                <select id="issueStudentId" class="input"></select>
+                <input id="issueDate" class="input" type="date" required>
+                <input id="dueDate" class="input" type="date" required>
+                <div class="actions">
+                    <button class="btn btn-secondary" id="cancelIssue" type="button">Cancel</button>
+                    <button class="btn btn-primary" type="submit">Confirm</button>
+                </div>
+            </form>
+        </article>
+    </section>
+
+    <section class="modal" id="alertModal">
+        <article class="card" style="width:min(420px, 100%);">
+            <h3 class="title" id="alertModalTitle" style="font-size:1.1rem;">Notification</h3>
+            <p class="small" id="alertModalMessage"></p>
+            <div class="actions" style="justify-content:flex-end;">
+                <button class="btn btn-secondary" id="alertModalCancel" type="button">Cancel</button>
+                <button class="btn btn-primary" id="alertModalConfirm" type="button">OK</button>
+            </div>
+        </article>
+    </section>
+
+    <script src="../assets/js/nav-auth.js"></script>
+    <script src="../assets/js/book-card.js"></script>
+    <script>
+        const API_BASE = "http://127.0.0.1:5000/api/books";
+        const API_STUDENTS = "http://127.0.0.1:5000/api/students";
+
+        const currentUser = JSON.parse(localStorage.getItem("smartLibraryUser") || "null");
+        const token = localStorage.getItem("smartLibraryToken");
+        const isAdminLike = ["admin", "librarian"].includes((currentUser?.role || "").toLowerCase());
+
+        const booksContainer = document.getElementById("booksContainer");
+        const recommendContainer = document.getElementById("recommendContainer");
+        const issuedList = document.getElementById("issuedList");
+        const booksStatus = document.getElementById("booksStatus");
+        const booksActionMessage = document.getElementById("booksActionMessage");
+        const searchInput = document.getElementById("searchInput");
+        const searchSuggestions = document.getElementById("searchSuggestions");
+        const alertModal = document.getElementById("alertModal");
+        const alertModalTitle = document.getElementById("alertModalTitle");
+        const alertModalMessage = document.getElementById("alertModalMessage");
+        const alertModalCancel = document.getElementById("alertModalCancel");
+        const alertModalConfirm = document.getElementById("alertModalConfirm");
+
+        let students = [];
+        let suggestionTimer = null;
+
+        function getHeaders() {
+            const headers = { "Content-Type": "application/json" };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        function showMessage(text, type = "") {
+            booksActionMessage.textContent = text;
+            booksActionMessage.className = `form-message ${type}`.trim();
+        }
+
+        function esc(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function bookCard(book, highlightQuery = "") {
+            return window.SmartLibraryBookCard.renderBookCard(book, {
+                user: currentUser,
+                isAdminLike,
+                showDelete: true,
+                highlightQuery,
+            });
+        }
+
+        function renderBooks(target, books, highlightQuery = "") {
+            if (!books.length) {
+                target.innerHTML = '<p class="small">No results found.</p>';
+                return;
+            }
+            target.innerHTML = `<div class="grid books-grid">${books.map((book) => bookCard(book, highlightQuery)).join("")}</div>`;
+        }
+
+        function renderIssued(items) {
+            if (!items.length) {
+                issuedList.innerHTML = '<p class="small">No active issue records.</p>';
+                return;
+            }
+            issuedList.innerHTML = `<div class="grid books-grid">${items.map((item) => `
+                <article class="media-card">
+                    <div class="media-content grid" style="gap:8px;">
+                        <strong>${esc(item.title)}</strong>
+                        <p class="small">Due: ${esc(item.due_at)}</p>
+                        <div class="actions">
+                            <button class="btn btn-secondary" type="button" data-action="return" data-book-id="${item.book_id}" data-transaction-id="${item.transaction_id}">Return</button>
+                        </div>
+                    </div>
+                </article>
+            `).join("")}</div>`;
+        }
+
+        function hideSuggestions() {
+            searchSuggestions.style.display = "none";
+            searchSuggestions.innerHTML = "";
+        }
+
+        function renderSuggestions(items = [], query = "") {
+            if (!query || !items.length) {
+                hideSuggestions();
+                return;
+            }
+            searchSuggestions.innerHTML = items
+                .map((item) => `<button type="button" class="search-suggestion-item" data-value="${esc(item.value)}">${esc(item.value)}</button>`)
+                .join("");
+            searchSuggestions.style.display = "block";
+        }
+
+        async function loadBooks(refresh = false) {
+            booksStatus.textContent = "Loading books...";
+            const response = await fetch(refresh ? `${API_BASE}?refresh=true` : API_BASE);
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Unable to load books.");
+            }
+            renderBooks(booksContainer, result.data || []);
+            booksStatus.textContent = "Ready";
+        }
+
+        async function loadRecommendations(query = "") {
+            const response = await fetch(`${API_BASE}/recommendations?q=${encodeURIComponent(query)}`);
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                recommendContainer.innerHTML = '<p class="small">No recommendations.</p>';
+                return;
+            }
+            renderBooks(recommendContainer, result.data || []);
+        }
+
+        async function loadIssued() {
+            if (!token) {
+                issuedList.innerHTML = '<p class="small">Login required.</p>';
+                return;
+            }
+            const response = await fetch(`${API_BASE}/my-issued`, { headers: getHeaders() });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                issuedList.innerHTML = `<p class="small">${esc(result.message || "Unable to load issue records.")}</p>`;
+                return;
+            }
+            renderIssued(result.data || []);
+        }
+
+        async function loadStudents() {
+            if (!isAdminLike || !token) {
+                return;
+            }
+            const response = await fetch(API_STUDENTS, { headers: getHeaders() });
+            const result = await response.json();
+            students = response.ok && result.success ? (result.data || []) : [];
+            const select = document.getElementById("issueStudentId");
+            select.innerHTML = students.map((s) => `<option value="${s.id}">${esc(s.name)} (${esc(s.email)})</option>`).join("");
+        }
+
+        function openIssueModal(bookId, title) {
+            if (!token) {
+                showMessage("Please login first.", "error");
+                return;
+            }
+            const modal = document.getElementById("issueModal");
+            modal.classList.add("open");
+            document.getElementById("issueBookTitle").textContent = title;
+            document.getElementById("issueBookId").value = bookId;
+            const today = new Date();
+            const due = new Date(today);
+            due.setDate(due.getDate() + 3);
+            document.getElementById("issueDate").value = today.toISOString().slice(0, 10);
+            document.getElementById("dueDate").value = due.toISOString().slice(0, 10);
+
+            const select = document.getElementById("issueStudentId");
+            if (isAdminLike) {
+                select.style.display = "block";
+            } else {
+                select.style.display = "none";
+            }
+        }
+
+        function closeIssueModal() {
+            document.getElementById("issueModal").classList.remove("open");
+        }
+
+        function closeAlertModal() {
+            alertModal.classList.remove("open");
+        }
+
+        function showAlertModal({
+            title = "Notification",
+            message = "",
+            confirmText = "OK",
+            cancelText = "",
+            showCancel = false,
+            onConfirm = null,
+            onCancel = null,
+        }) {
+            alertModalTitle.textContent = title;
+            alertModalMessage.textContent = message;
+            alertModalConfirm.textContent = confirmText;
+            alertModalCancel.textContent = cancelText || "Cancel";
+            alertModalCancel.style.display = showCancel ? "inline-flex" : "none";
+
+            alertModalConfirm.onclick = () => {
+                closeAlertModal();
+                if (typeof onConfirm === "function") {
+                    onConfirm();
+                }
+            };
+            alertModalCancel.onclick = () => {
+                closeAlertModal();
+                if (typeof onCancel === "function") {
+                    onCancel();
+                }
+            };
+
+            alertModal.classList.add("open");
+        }
+
+        function showInfoPopup(message, title = "Notification", confirmText = "OK") {
+            return new Promise((resolve) => {
+                showAlertModal({
+                    title,
+                    message,
+                    confirmText,
+                    showCancel: false,
+                    onConfirm: () => resolve(true),
+                });
+            });
+        }
+
+        function showConfirmPopup(message, title = "Confirm", confirmText = "Confirm", cancelText = "Cancel") {
+            return new Promise((resolve) => {
+                showAlertModal({
+                    title,
+                    message,
+                    confirmText,
+                    cancelText,
+                    showCancel: true,
+                    onConfirm: () => resolve(true),
+                    onCancel: () => resolve(false),
+                });
+            });
+        }
+
+        async function processReturn(payload, { skipConfirm = false } = {}) {
+            if (!skipConfirm) {
+                const confirmed = await showConfirmPopup(
+                    "Are you sure you want to return this book?",
+                    "Return Book",
+                    "Return",
+                    "Cancel"
+                );
+                if (!confirmed) {
+                    return;
+                }
+            }
+
+            const response = await fetch(`${API_BASE}/return`, {
+                method: "POST",
+                headers: getHeaders(),
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Return failed.");
+            }
+
+            await showInfoPopup("Book returned successfully", "Success");
+
+            const fine = Number(result.data?.fine_amount || 0);
+            if (fine > 0) {
+                const pay = confirm(`Fine: Rs. ${fine.toFixed(2)}. Pay now?`);
+                if (pay) {
+                    const payRes = await fetch(`${API_BASE}/pay-fine`, {
+                        method: "POST",
+                        headers: getHeaders(),
+                        body: JSON.stringify({ transaction_id: payload.transaction_id, amount: fine }),
+                    });
+                    const payResult = await payRes.json();
+                    if (payRes.ok && payResult.success) {
+                        showMessage(`Returned. Fine paid (${payResult.data.payment_reference}).`, "success");
+                    } else {
+                        showMessage(`Returned. Fine pending: Rs. ${fine.toFixed(2)}.`, "error");
+                    }
+                } else {
+                    showMessage(`Returned. Fine pending: Rs. ${fine.toFixed(2)}.`, "error");
+                }
+            } else {
+                showMessage("Book returned.", "success");
+            }
+
+            await Promise.all([loadBooks(false), loadIssued()]);
+        }
+
+        async function checkDueBooks() {
+            if (!token) {
+                return;
+            }
+            const response = await fetch(`${API_BASE}/due-check`, { headers: getHeaders(), cache: "no-store" });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                return;
+            }
+
+            const dueBooks = Array.isArray(result.data) ? result.data : [];
+            if (!dueBooks.length) {
+                return;
+            }
+
+            const dueBook = dueBooks[0];
+            const shouldReturn = await showConfirmPopup(
+                "Book is due. Please return it.",
+                `Due Date: ${dueBook.due_date || "-"}`,
+                "Return",
+                "Cancel"
+            );
+            if (!shouldReturn) {
+                return;
+            }
+
+            await processReturn(
+                {
+                    transaction_id: Number(dueBook.transaction_id),
+                    book_id: Number(dueBook.book_id),
+                },
+                { skipConfirm: true }
+            );
+        }
+
+        async function issueBook(event) {
+            event.preventDefault();
+            const payload = {
+                book_id: Number(document.getElementById("issueBookId").value),
+                issue_date: document.getElementById("issueDate").value,
+                due_date: document.getElementById("dueDate").value,
+                student_id: isAdminLike ? Number(document.getElementById("issueStudentId").value || 0) : null,
+            };
+            const response = await fetch(`${API_BASE}/issue`, {
+                method: "POST",
+                headers: getHeaders(),
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Issue failed.");
+            }
+            closeIssueModal();
+            await showInfoPopup(`Book issued successfully. Due date: ${result.data?.due_date || "-"}`, "Success");
+            showMessage("Book issued.", "success");
+            await Promise.all([loadBooks(false), loadIssued()]);
+        }
+
+        async function returnBook(button) {
+            await processReturn({
+                transaction_id: Number(button.dataset.transactionId),
+                book_id: Number(button.dataset.bookId),
+            });
+        }
+
+        async function deleteBook(bookId) {
+            if (!confirm("Delete this book?")) {
+                return;
+            }
+            const response = await fetch(`${API_BASE}/admin/${bookId}`, {
+                method: "DELETE",
+                headers: getHeaders(),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Delete failed.");
+            }
+            showMessage("Book removed.", "success");
+            await loadBooks(false);
+        }
+
+        async function addBook(event) {
+            event.preventDefault();
+            const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+            const response = await fetch(`${API_BASE}/admin/add`, {
+                method: "POST",
+                headers: getHeaders(),
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Add book failed.");
+            }
+            event.currentTarget.reset();
+            showMessage("Book added.", "success");
+            await loadBooks(false);
+        }
+
+        async function searchBooks(event) {
+            event.preventDefault();
+            const q = searchInput.value.trim();
+            hideSuggestions();
+            if (!q) {
+                await loadBooks(false);
+                await loadRecommendations("");
+                booksStatus.textContent = "Ready";
+                return;
+            }
+            const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}`);
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Search failed.");
+            }
+            renderBooks(booksContainer, result.data || [], q);
+            await loadRecommendations(q);
+            booksStatus.textContent = `Search: ${q}`;
+        }
+
+        async function loadSuggestions(q) {
+            if (!q) {
+                hideSuggestions();
+                return;
+            }
+            const response = await fetch(`${API_BASE}/suggestions?q=${encodeURIComponent(q)}`);
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                hideSuggestions();
+                return;
+            }
+            renderSuggestions(result.data || [], q);
+        }
+
+        document.getElementById("booksContainer").addEventListener("click", async (event) => {
+            const button = event.target.closest("button[data-action]");
+            if (!button) {
+                return;
+            }
+            try {
+                if (button.dataset.action === "issue") {
+                    openIssueModal(Number(button.dataset.bookId), button.dataset.title);
+                }
+                if (button.dataset.action === "delete") {
+                    await deleteBook(Number(button.dataset.bookId));
+                }
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        document.getElementById("issuedList").addEventListener("click", async (event) => {
+            const button = event.target.closest("button[data-action='return']");
+            if (!button) {
+                return;
+            }
+            try {
+                await returnBook(button);
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        searchInput.addEventListener("input", (event) => {
+            const q = event.target.value.trim();
+            if (suggestionTimer) {
+                clearTimeout(suggestionTimer);
+            }
+            suggestionTimer = setTimeout(() => {
+                loadSuggestions(q).catch(() => hideSuggestions());
+            }, 300);
+        });
+
+        searchInput.addEventListener("focus", () => {
+            const q = searchInput.value.trim();
+            if (q) {
+                loadSuggestions(q).catch(() => hideSuggestions());
+            }
+        });
+
+        searchSuggestions.addEventListener("click", async (event) => {
+            const button = event.target.closest("button[data-value]");
+            if (!button) {
+                return;
+            }
+            searchInput.value = button.dataset.value || "";
+            hideSuggestions();
+            try {
+                await searchBooks(new Event("submit"));
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        document.addEventListener("click", (event) => {
+            if (!event.target.closest(".search-input-wrap")) {
+                hideSuggestions();
+            }
+        });
+
+        document.getElementById("cancelIssue").addEventListener("click", closeIssueModal);
+        document.getElementById("issueModal").addEventListener("click", (event) => {
+            if (event.target.id === "issueModal") {
+                closeIssueModal();
+            }
+        });
+        document.getElementById("issueDate").addEventListener("change", (event) => {
+            const issueDate = event.target.value;
+            if (!issueDate) {
+                return;
+            }
+            const issue = new Date(issueDate);
+            issue.setDate(issue.getDate() + 3);
+            document.getElementById("dueDate").value = issue.toISOString().slice(0, 10);
+        });
+        document.getElementById("alertModal").addEventListener("click", (event) => {
+            if (event.target.id === "alertModal") {
+                closeAlertModal();
+            }
+        });
+
+        document.getElementById("issueForm").addEventListener("submit", async (event) => {
+            try {
+                await issueBook(event);
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        document.getElementById("refreshButton").addEventListener("click", async () => {
+            try {
+                await loadBooks(true);
+                await loadRecommendations("");
+                showMessage("Books refreshed.", "success");
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        document.getElementById("searchForm").addEventListener("submit", async (event) => {
+            try {
+                await searchBooks(event);
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        document.getElementById("addBookForm")?.addEventListener("submit", async (event) => {
+            try {
+                await addBook(event);
+            } catch (error) {
+                showMessage(error.message, "error");
+            }
+        });
+
+        (async function init() {
+            if (isAdminLike) {
+                document.getElementById("adminSection").style.display = "block";
+                await loadStudents();
+            }
+            const query = new URLSearchParams(window.location.search).get("q") || "";
+            searchInput.value = query;
+            if (query) {
+                await searchBooks(new Event("submit"));
+            } else {
+                await loadBooks(false);
+                await loadRecommendations("");
+            }
+            await loadIssued();
+            await checkDueBooks();
+        })().catch((error) => {
+            showMessage(error.message || "Unable to load page.", "error");
+        });
+    </script>
+</body>
+</html>

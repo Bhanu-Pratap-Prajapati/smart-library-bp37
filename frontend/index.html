@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="navbar"></header>
+
+    <main class="app-shell">
+        <section class="card grid" style="gap:16px;">
+            <div class="row">
+                <div>
+                    <h1 class="title">Smart Library</h1>
+                    <p class="subtext">Fast search, issue, return, and recommendations.</p>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" id="goBooksBtn" type="button">Open Books</button>
+                </div>
+            </div>
+
+            <form id="globalSearchForm" class="row" style="align-items:stretch;">
+                <input class="input" id="globalSearchInput" type="text" placeholder="Search by Book ID, title, or author">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </form>
+
+            <p class="small">Status: <span id="homeStatus">Loading...</span></p>
+
+            <section>
+                <h2 class="section-title">Featured Books</h2>
+                <div id="featuredBooks"></div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Recommended Books</h2>
+                <div id="recommendedBooks"></div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Categories</h2>
+                <div id="categories" class="actions"></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="assets/js/nav-auth.js"></script>
+    <script src="assets/js/book-card.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

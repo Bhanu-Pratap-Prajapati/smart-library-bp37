@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Features | Smart Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        html,
+        body.ai-assistant-page {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body.ai-assistant-page .app-shell {
+            height: calc(100vh - 68px);
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .ai-assistant-shell {
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr) 280px;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        .ai-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .ai-left {
+            padding: 14px;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 12px;
+            min-height: 0;
+            height: 100%;
+            position: sticky;
+            top: 0;
+            overflow: hidden;
+        }
+
+        .ai-new-chat {
+            width: 100%;
+        }
+
+        .ai-sidebar-block {
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        .ai-sidebar-label {
+            margin: 0 0 8px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+
+        .ai-history-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+        }
+
+        .ai-history-item {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            text-align: left;
+            padding: 8px 10px;
+            cursor: pointer;
+        }
+
+        .ai-history-item:hover {
+            background: var(--surface-soft);
+        }
+
+        .ai-main {
+            padding: 0;
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+        }
+
+        .ai-main-head {
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px;
+        }
+
+        .ai-main-head h1 {
+            margin: 0;
+            font-size: 1.08rem;
+        }
+
+        .ai-main-head p {
+            margin: 4px 0 0;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        .ai-messages {
+            padding: 14px 16px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            display: grid;
+            gap: 10px;
+            align-content: start;
+            min-height: 0;
+        }
+
+        .ai-row {
+            display: flex;
+        }
+
+        .ai-row-user {
+            justify-content: flex-end;
+        }
+
+        .ai-row-assistant {
+            justify-content: flex-start;
+        }
+
+        .ai-bubble {
+            max-width: min(720px, 84%);
+            border-radius: 14px;
+            padding: 10px 12px;
+            line-height: 1.5;
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .ai-bubble-user {
+            background: var(--primary);
+            border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-bubble-assistant {
+            background: color-mix(in srgb, var(--surface-soft) 56%, var(--surface));
+            border-bottom-left-radius: 4px;
+        }
+
+        .ai-book-list,
+        .ai-fine-list {
+            margin-top: 8px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .ai-mini-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: color-mix(in srgb, var(--surface) 90%, transparent);
+        }
+
+        .ai-mini-card strong {
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .ai-input-wrap {
+            border-top: 1px solid var(--border);
+            padding: 10px 12px;
+            position: sticky;
+            bottom: 0;
+            background: var(--surface);
+            z-index: 2;
+        }
+
+        .ai-input-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ai-chat-input {
+            width: 100%;
+        }
+
+        .ai-right {
+            padding: 14px;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+            height: 100%;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+        }
+
+        .ai-right-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .ai-chip-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ai-chip {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.82rem;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
+        .ai-chip:hover {
+            background: var(--surface-soft);
+        }
+
+        @media (max-width: 1080px) {
+            .ai-assistant-shell {
+                grid-template-columns: 220px minmax(0, 1fr);
+            }
+
+            .ai-right {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            html,
+            body.ai-assistant-page {
+                overflow: auto;
+            }
+
+            body.ai-assistant-page .app-shell {
+                height: auto;
+                overflow: visible;
+            }
+
+            .ai-assistant-shell {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow: visible;
+            }
+
+            .ai-left {
+                order: 2;
+                min-height: 280px;
+                position: static;
+            }
+
+            .ai-main {
+                order: 1;
+                min-height: calc(100vh - 210px);
+            }
+        }
+    </style>
+</head>
+<body class="ai-assistant-page">
+    <header class="navbar"></header>
+
+    <main class="app-shell">
+        <section class="ai-assistant-shell">
+            <aside class="ai-panel ai-left">
+                <button id="aiNewChatBtn" class="btn btn-primary ai-new-chat" type="button">New Chat</button>
+                <div class="ai-sidebar-block">
+                    <p class="ai-sidebar-label">Chat History</p>
+                    <ul id="aiHistoryList" class="ai-history-list"></ul>
+                </div>
+            </aside>
+
+            <section class="ai-panel ai-main">
+                <div class="ai-main-head">
+                    <h1>AI Assistant</h1>
+                    <p id="aiStatusText">Ask anything about books, library, study, and your account data.</p>
+                </div>
+                <div id="aiMessages" class="ai-messages"></div>
+                <form id="aiChatForm" class="ai-input-wrap">
+                    <div class="ai-input-row">
+                        <input
+                            id="aiChatInput"
+                            class="input ai-chat-input"
+                            type="text"
+                            placeholder="Ask anything about books, library, study..."
+                            autocomplete="off"
+                            required
+                        >
+                        <button id="aiSendBtn" class="btn btn-primary" type="submit">Send</button>
+                    </div>
+                </form>
+            </section>
+
+            <aside class="ai-panel ai-right">
+                <section class="ai-right-group">
+                    <p class="ai-sidebar-label">Suggested Questions</p>
+                    <div class="ai-chip-list">
+                        <button class="ai-chip" type="button" data-ai-prompt="Best python books">Best python books</button>
+                        <button class="ai-chip" type="button" data-ai-prompt="Suggest DBMS books">Suggest DBMS books</button>
+                        <button class="ai-chip" type="button" data-ai-prompt="My issued books">My issued books</button>
+                        <button class="ai-chip" type="button" data-ai-prompt="Fine details">Fine details</button>
+                    </div>
+                </section>
+                <section class="ai-right-group">
+                    <p class="ai-sidebar-label">Trending Books</p>
+                    <div class="ai-chip-list">
+                        <button class="ai-chip" type="button" data-ai-prompt="Show trending AI books">AI & ML</button>
+                        <button class="ai-chip" type="button" data-ai-prompt="Show trending DBMS books">DBMS</button>
+                        <button class="ai-chip" type="button" data-ai-prompt="Recommend software engineering books">Software Engineering</button>
+                    </div>
+                </section>
+                <section class="ai-right-group">
+                    <p class="ai-sidebar-label">Quick Actions</p>
+                    <div class="ai-chip-list">
+                        <button class="ai-chip" type="button" data-ai-prompt="Search books on data structures">Search by topic</button>
+                        <button class="ai-chip" type="button" data-ai-prompt="Suggest books for exam preparation">Exam prep</button>
+                    </div>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <script src="../assets/js/nav-auth.js"></script>
+    <script src="../assets/js/ai-features.js"></script>
+</body>
+</html>

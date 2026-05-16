@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Smart Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <header class="navbar"></header>
+
+    <main class="app-shell">
+        <section class="card grid" style="gap:16px;">
+            <div>
+                <h1 id="dashboardTitle" class="title">Dashboard</h1>
+                <p id="dashboardSubtitle" class="subtext">Loading...</p>
+            </div>
+
+            <section>
+                <article class="media-card">
+                    <div class="media-content grid" style="gap:8px;">
+                        <div id="profileAvatar" style="width:64px;height:64px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;">SL</div>
+                        <strong id="profileName">Member</strong>
+                        <p id="profileMeta" class="small">Role</p>
+                        <p class="small">Email: <span id="profileEmail"></span></p>
+                        <p class="small">Department: <span id="profileDept"></span></p>
+                        <div class="bio-display">
+                            <p id="profileBio" class="small"></p>
+                            <button id="editBioButton" class="bio-edit-btn" type="button" aria-label="Edit bio" title="Edit bio">Edit</button>
+                        </div>
+                        <div id="bioEditor" class="grid" style="display:none;gap:8px;">
+                            <textarea id="bioInputInline" class="input" rows="3" placeholder="Bio"></textarea>
+                            <div class="actions">
+                                <button id="saveBioButton" class="btn btn-primary" type="button">Save</button>
+                                <button id="cancelBioButton" class="btn btn-secondary" type="button">Cancel</button>
+                            </div>
+                        </div>
+                        <p id="profileMessage" class="form-message"></p>
+                    </div>
+                </article>
+            </section>
+
+            <section>
+                <h2 class="section-title">Stats</h2>
+                <div id="statsGrid"></div>
+            </section>
+
+            <section id="notificationsSection">
+                <h2 class="section-title">Issue & Due Alerts</h2>
+                <p id="notificationsMessage" class="form-message"></p>
+                <div id="notificationsList" class="grid"></div>
+            </section>
+
+            <section id="activeLoansSection">
+                <h2 class="section-title">Active Issued Books</h2>
+                <div id="activeLoansList" class="grid grid-auto"></div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Issue & Return History</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Author/Student</th>
+                                <th>Issued</th>
+                                <th>Due</th>
+                                <th>Returned</th>
+                                <th>Fine</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityBody">
+                            <tr><td colspan="6">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="adminUsersSection" style="display:none;">
+                <h2 class="section-title">Admin: Manage Users</h2>
+                <p id="usersSummary" class="small"></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Change</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersBody">
+                            <tr><td colspan="5">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <section class="modal" id="dashboardAlertModal">
+        <article class="card" style="width:min(420px, 100%);">
+            <h3 class="title" id="dashboardAlertTitle" style="font-size:1.1rem;">Notification</h3>
+            <p class="small" id="dashboardAlertMessage"></p>
+            <div class="actions" style="justify-content:flex-end;">
+                <button class="btn btn-secondary" id="dashboardAlertCancel" type="button">Cancel</button>
+                <button class="btn btn-primary" id="dashboardAlertConfirm" type="button">OK</button>
+            </div>
+        </article>
+    </section>
+
+    <script src="../assets/js/nav-auth.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Smart Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Inter", "system-ui", "sans-serif"],
+                    },
+                    colors: {
+                        brand: {
+                            50: "#f0f7ff",
+                            500: "#2563eb",
+                            600: "#1d4ed8",
+                            700: "#1e40af",
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useMemo, useState } = React;
+        const API_BASE_URL = "http://127.0.0.1:5000/api";
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
+        }
+
+        function TextInput({
+            id,
+            name,
+            type = "text",
+            label,
+            value,
+            placeholder,
+            onChange,
+            error,
+            right,
+            autoComplete,
+        }) {
+            return (
+                <label htmlFor={id} className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-300">{label}</span>
+                    <div className="relative">
+                        <input
+                            id={id}
+                            name={name}
+                            type={type}
+                            value={value}
+                            onChange={onChange}
+                            placeholder={placeholder}
+                            autoComplete={autoComplete}
+                            className={`w-full rounded-xl border bg-slate-900/70 px-4 py-3 pr-14 text-sm text-slate-100 outline-none transition ${
+                                error
+                                    ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-400/30"
+                                    : "border-slate-700 hover:border-slate-500 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+                            }`}
+                        />
+                        {right ? <div className="absolute inset-y-0 right-3 flex items-center">{right}</div> : null}
+                    </div>
+                    <p className="mt-1.5 min-h-[1.1rem] text-xs text-red-300">{error || ""}</p>
+                </label>
+            );
+        }
+
+        function LoginForm({ onSuccess }) {
+            const [form, setForm] = useState({ email: "", password: "" });
+            const [showPassword, setShowPassword] = useState(false);
+            const [errors, setErrors] = useState({});
+            const [message, setMessage] = useState({ text: "", type: "" });
+            const [loading, setLoading] = useState(false);
+
+            function onFieldChange(event) {
+                const { name, value } = event.target;
+                setForm((prev) => ({ ...prev, [name]: value }));
+                setErrors((prev) => ({ ...prev, [name]: "" }));
+            }
+
+            function validate() {
+                const nextErrors = {};
+                if (!validateEmail(form.email)) {
+                    nextErrors.email = "Enter a valid email address.";
+                }
+                if (!form.password) {
+                    nextErrors.password = "Password is required.";
+                } else if (form.password.length < 8) {
+                    nextErrors.password = "Password must be at least 8 characters.";
+                }
+                setErrors(nextErrors);
+                return Object.keys(nextErrors).length === 0;
+            }
+
+            async function handleSubmit(event) {
+                event.preventDefault();
+                if (!validate()) {
+                    return;
+                }
+
+                setLoading(true);
+                setMessage({ text: "", type: "" });
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/login`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: form.email, password: form.password }),
+                    });
+
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || "Login failed.");
+                    }
+
+                    localStorage.setItem("smartLibraryUser", JSON.stringify(result.user));
+                    localStorage.setItem("smartLibraryToken", result.token);
+                    setMessage({ text: "Login successful. Redirecting...", type: "success" });
+                    onSuccess();
+                } catch (error) {
+                    setMessage({ text: error.message || "Login failed.", type: "error" });
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            return (
+                <form id="loginForm" onSubmit={handleSubmit} className="space-y-2">
+                    <TextInput
+                        id="loginEmail"
+                        name="email"
+                        label="Email"
+                        value={form.email}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        onChange={onFieldChange}
+                        error={errors.email}
+                    />
+
+                    <TextInput
+                        id="loginPassword"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        label="Password"
+                        value={form.password}
+                        placeholder="Enter your password"
+                        autoComplete="current-password"
+                        onChange={onFieldChange}
+                        error={errors.password}
+                        right={
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((v) => !v)}
+                                className="text-xs font-medium text-slate-300 hover:text-white"
+                            >
+                                {showPassword ? "Hide" : "Show"}
+                            </button>
+                        }
+                    />
+
+                    <div className="flex justify-end pb-1">
+                        <button
+                            type="button"
+                            className="text-xs font-medium text-slate-300 transition hover:text-white"
+                            onClick={() => window.alert("Forgot password flow can be connected to your backend endpoint.")}
+                        >
+                            Forgot Password?
+                        </button>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                        {loading ? "Signing In..." : "Login"}
+                    </button>
+
+                    <p
+                        id="loginMessage"
+                        className={`min-h-[1.25rem] pt-1 text-sm ${
+                            message.type === "success"
+                                ? "text-emerald-300"
+                                : message.type === "error"
+                                ? "text-red-300"
+                                : "text-slate-400"
+                        }`}
+                    >
+                        {message.text}
+                    </p>
+                </form>
+            );
+        }
+
+        function SignupForm({ onSuccess }) {
+            const [form, setForm] = useState({
+                full_name: "",
+                email: "",
+                password: "",
+                confirm_password: "",
+            });
+            const [showPassword, setShowPassword] = useState(false);
+            const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+            const [errors, setErrors] = useState({});
+            const [message, setMessage] = useState({ text: "", type: "" });
+            const [loading, setLoading] = useState(false);
+
+            function onFieldChange(event) {
+                const { name, value } = event.target;
+                setForm((prev) => ({ ...prev, [name]: value }));
+                setErrors((prev) => ({ ...prev, [name]: "" }));
+            }
+
+            const passwordStrength = useMemo(() => {
+                if (!form.password) {
+                    return "";
+                }
+                if (form.password.length < 8) {
+                    return "Weak";
+                }
+                if (form.password.length < 12) {
+                    return "Medium";
+                }
+                return "Strong";
+            }, [form.password]);
+
+            function validate() {
+                const nextErrors = {};
+                if (!form.full_name.trim()) {
+                    nextErrors.full_name = "Name is required.";
+                }
+                if (!validateEmail(form.email)) {
+                    nextErrors.email = "Enter a valid email address.";
+                }
+                if (!form.password) {
+                    nextErrors.password = "Password is required.";
+                } else if (form.password.length < 8) {
+                    nextErrors.password = "Password must be at least 8 characters.";
+                } else if (!/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/\d/.test(form.password) || !/[^A-Za-z0-9]/.test(form.password)) {
+                    nextErrors.password = "Use uppercase, lowercase, number, and special character.";
+                }
+                if (form.confirm_password !== form.password) {
+                    nextErrors.confirm_password = "Passwords do not match.";
+                }
+                setErrors(nextErrors);
+                return Object.keys(nextErrors).length === 0;
+            }
+
+            async function loginAfterSignup(email, password) {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || "Login failed.");
+                }
+                localStorage.setItem("smartLibraryUser", JSON.stringify(result.user));
+                localStorage.setItem("smartLibraryToken", result.token);
+            }
+
+            async function handleSubmit(event) {
+                event.preventDefault();
+                if (!validate()) {
+                    return;
+                }
+
+                setLoading(true);
+                setMessage({ text: "", type: "" });
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/signup`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            name: form.full_name,
+                            full_name: form.full_name,
+                            email: form.email,
+                            password: form.password,
+                            role: "student",
+                        }),
+                    });
+
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || "Registration failed.");
+                    }
+
+                    await loginAfterSignup(form.email, form.password);
+                    setMessage({ text: "Account created. Redirecting...", type: "success" });
+                    onSuccess();
+                } catch (error) {
+                    setMessage({ text: error.message || "Registration failed.", type: "error" });
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            return (
+                <form id="registerForm" onSubmit={handleSubmit} className="space-y-2">
+                    <input type="hidden" id="registerRole" name="role" value="student" />
+
+                    <TextInput
+                        id="signupName"
+                        name="full_name"
+                        label="Name"
+                        value={form.full_name}
+                        placeholder="Your full name"
+                        autoComplete="name"
+                        onChange={onFieldChange}
+                        error={errors.full_name}
+                    />
+
+                    <TextInput
+                        id="signupEmail"
+                        name="email"
+                        label="Email"
+                        value={form.email}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        onChange={onFieldChange}
+                        error={errors.email}
+                    />
+
+                    <div>
+                        <TextInput
+                            id="signupPassword"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            label="Password"
+                            value={form.password}
+                            placeholder="Create a password"
+                            autoComplete="new-password"
+                            onChange={onFieldChange}
+                            error={errors.password}
+                            right={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="text-xs font-medium text-slate-300 hover:text-white"
+                                >
+                                    {showPassword ? "Hide" : "Show"}
+                                </button>
+                            }
+                        />
+                        <p className="-mt-1 pb-2 text-xs text-slate-400">Password strength: {passwordStrength || "-"}</p>
+                    </div>
+
+                    <TextInput
+                        id="signupConfirmPassword"
+                        name="confirm_password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        label="Confirm Password"
+                        value={form.confirm_password}
+                        placeholder="Re-enter password"
+                        autoComplete="new-password"
+                        onChange={onFieldChange}
+                        error={errors.confirm_password}
+                        right={
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword((v) => !v)}
+                                className="text-xs font-medium text-slate-300 hover:text-white"
+                            >
+                                {showConfirmPassword ? "Hide" : "Show"}
+                            </button>
+                        }
+                    />
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                        {loading ? "Creating Account..." : "Signup"}
+                    </button>
+
+                    <p
+                        id="registerMessage"
+                        className={`min-h-[1.25rem] pt-1 text-sm ${
+                            message.type === "success"
+                                ? "text-emerald-300"
+                                : message.type === "error"
+                                ? "text-red-300"
+                                : "text-slate-400"
+                        }`}
+                    >
+                        {message.text}
+                    </p>
+                </form>
+            );
+        }
+
+        function AuthPage() {
+            const [mode, setMode] = useState("login");
+
+            function handleSuccess() {
+                setTimeout(() => {
+                    window.location.href = "../index.html";
+                }, 350);
+            }
+
+            return (
+                <main className="min-h-screen flex items-center justify-center">
+                    <section className="w-full max-w-md p-6">
+                        <div className="w-full">
+                            <div className="mb-6 inline-flex w-full rounded-xl bg-slate-900 p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("login")}
+                                    className={`w-1/2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+                                        mode === "login" ? "bg-brand-500 text-white" : "text-slate-300 hover:text-white"
+                                    }`}
+                                >
+                                    Login
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("signup")}
+                                    className={`w-1/2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+                                        mode === "signup" ? "bg-brand-500 text-white" : "text-slate-300 hover:text-white"
+                                    }`}
+                                >
+                                    Signup
+                                </button>
+                            </div>
+
+                            <div className="mb-6">
+                                <h2 className="text-2xl font-semibold text-white">
+                                    {mode === "login" ? "Sign in to your account" : "Create your account"}
+                                </h2>
+                                <p className="mt-2 text-sm text-slate-400">
+                                    {mode === "login"
+                                        ? "Use your credentials to continue."
+                                        : "It only takes a minute to get started."}
+                                </p>
+                            </div>
+
+                            {mode === "login"
+                                ? <LoginForm onSuccess={handleSuccess} />
+                                : <SignupForm onSuccess={handleSuccess} />}
+                        </div>
+                    </section>
+                </main>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(<AuthPage />);
+    </script>
+</body>
+</html>
