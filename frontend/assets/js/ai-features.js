@@ -1,5 +1,5 @@
-const API_URL = "http://127.0.0.1:5000/api/ai/chat";
-const API_HISTORY_URL = "http://127.0.0.1:5000/api/ai/history";
+const API_URL = "https://smart-library-backend-ngj7.onrender.com/api/ai/chat";
+const API_HISTORY_URL = "https://smart-library-backend-ngj7.onrender.com/api/ai/history";
 const HISTORY_KEY = "smartLibraryAiChatHistory";
 
 const state = {

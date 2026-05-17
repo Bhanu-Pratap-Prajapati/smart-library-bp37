@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://127.0.0.1:5000/api";
+const API_BASE_URL = "https://smart-library-backend-ngj7.onrender.com/api";
 const PROFILE_CACHE_PREFIX = "smartLibraryProfileCache";
 const DEFAULT_PROFILE_BIO = "Add a short bio from the profile editor.";
 let duePromptInProgress = false;

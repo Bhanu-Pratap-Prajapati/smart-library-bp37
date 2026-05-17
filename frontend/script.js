@@ -1,4 +1,4 @@
-const API_BOOKS = "http://127.0.0.1:5000/api/books";
+const API_BOOKS = "https://smart-library-backend-ngj7.onrender.com/api/books";
 const currentUser = JSON.parse(localStorage.getItem("smartLibraryUser") || "null");
 
 function escapeHtml(value) {
