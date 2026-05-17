@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://127.0.0.1:5000/api";
+const API_BASE_URL = "https://smart-library-backend-ngj7.onrender.com/api";
 
 function showMessage(elementId, message, type = "") {
     const el = document.getElementById(elementId);
