@@ -12,6 +12,7 @@ class DatabaseManager:
             "user": config.user,
             "password": config.password,
             "database": config.database,
+            "ssl_disabled":False
         }
 
     def get_connection(self):
